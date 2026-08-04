@@ -37,6 +37,8 @@
         .btn-pagar { background-color: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
         .btn-pago { background-color: #95a5a6; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
         .btn-renovar { background-color: #f39c12; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .btn-visualizar { background-color: #8e44ad; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .btn-clonar { background-color: #2980b9; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #f2f2f2; }
@@ -179,6 +181,7 @@
                         <option value="cliente">Contrato de Prestação de Serviços (Anunciante)</option>
                         <option value="independente">Contrato de Prestação de Serviços (Gestão de TV)</option>
                     </select>
+
                     <div id="form-parceiro" class="contrato-box">
                         <label>Nome do Estabelecimento/Parceiro</label><input type="text" id="contrato-parceiro-nome">
                         <label>CPF/CNPJ do Parceiro</label><input type="text" id="contrato-parceiro-cpf">
@@ -189,15 +192,18 @@
                         <label>Duração (meses)</label><input type="number" id="contrato-parceiro-duracao" value="12">
                         <button class="btn-salvar" onclick="gerarContratoParceiro()">Gerar Contrato Parceiro</button>
                     </div>
+
                     <div id="form-cliente" class="contrato-box">
                         <label>Nome do Cliente / Empresa</label><input type="text" id="contrato-cliente-nome">
                         <label>CPF/CNPJ do Cliente</label><input type="text" id="contrato-cliente-cpf">
-                        <label>Pontos de Exibição</label><input type="text" id="contrato-cliente-pontos" placeholder="Ex: Padaria Central, Mercado do Zé">
+                        <label>Selecione os Pontos de Exibição</label>
+                        <div id="contrato-cliente-pontos-checkbox" class="checkbox-group"></div>
                         <label>Valor Mensal (R$)</label><input type="number" id="contrato-cliente-valor">
                         <label>Data de Início</label><input type="date" id="contrato-cliente-inicio">
                         <label>Duração (meses)</label><input type="number" id="contrato-cliente-duracao" value="3">
                         <button class="btn-salvar" onclick="gerarContratoCliente()">Gerar Contrato Cliente</button>
                     </div>
+
                     <div id="form-independente" class="contrato-box">
                         <label>Nome do Cliente / Empresa</label><input type="text" id="contrato-ind-nome">
                         <label>CPF/CNPJ do Cliente</label><input type="text" id="contrato-ind-cpf">
@@ -207,6 +213,12 @@
                         <label>Duração (meses)</label><input type="number" id="contrato-ind-duracao" value="3">
                         <button class="btn-salvar" onclick="gerarContratoIndependente()">Gerar Contrato Independente</button>
                     </div>
+                </div>
+
+                <!-- HISTÓRICO DE CONTRATOS -->
+                <div class="card">
+                    <h3>Histórico de Contratos Gerados</h3>
+                    <table><thead><tr><th>Tipo</th><th>Nome/Empresa</th><th>Data Geração</th><th>Ações</th></tr></thead><tbody id="lista-contratos"></tbody></table>
                 </div>
             </div>
         </div>
@@ -230,7 +242,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        let pontos = [], clientes = [], independentes = [];
+        let pontos = [], clientes = [], independentes = [], contratos = [];
 
         // --- AUTENTICAÇÃO ---
         function fazerLogin() {
@@ -257,6 +269,7 @@
             db.collection('pontos').onSnapshot(snap => { pontos = []; snap.forEach(d => pontos.push({id: d.id, ...d.data()})); renderPontos(); renderDashboard(); });
             db.collection('clientes').onSnapshot(snap => { clientes = []; snap.forEach(d => clientes.push({id: d.id, ...d.data()})); renderClientes(); renderDashboard(); });
             db.collection('independentes').onSnapshot(snap => { independentes = []; snap.forEach(d => independentes.push({id: d.id, ...d.data()})); renderIndependentes(); renderDashboard(); });
+            db.collection('contratos').orderBy('criadoEm', 'desc').onSnapshot(snap => { contratos = []; snap.forEach(d => contratos.push({id: d.id, ...d.data()})); renderContratos(); });
             carregarDados();
         }
 
@@ -264,6 +277,7 @@
             document.querySelectorAll('.section').forEach(el => el.style.display = 'none');
             document.getElementById(id).style.display = 'block';
             if(id === 'clientes') renderCheckboxes();
+            if(id === 'contratos') mudarFormContrato();
         }
 
         // --- HELPERS ---
@@ -272,15 +286,24 @@
             const hoje = new Date(); const venc = new Date(dateStr + "T23:59:59");
             const diff = (venc - hoje) / (1000*60*60*24);
             if(diff < 0) return 'alerta-vermelho';
-            if(diff <= 15) return 'alerta-vermelho';
-            if(diff <= 30) return 'alerta-amarelo';
+            if(diff <= 5) return 'alerta-vermelho';
+            if(diff <= 10) return 'alerta-amarelo';
             return '';
         }
-        function getWhatsAppLink(tel, nome) {
+        function getWhatsAppLink(tel, vencimento) {
             if(!tel) return '#';
             let clean = tel.replace(/\D/g, '');
             if(!clean.startsWith('55') && clean.length <= 11) clean = '55' + clean;
-            return `https://wa.me/${clean}?text=Olá ${nome}, aqui é da Forus Mídia!`;
+            
+            let msg = "Olá, aqui é da Forus Mídia!";
+            if(vencimento) {
+                const hoje = new Date(); const venc = new Date(vencimento + "T23:59:59");
+                const diff = (venc - hoje) / (1000*60*60*24);
+                if(diff <= 10) { 
+                    msg = "Olá! A Forus Mídia está enviando esta mensagem automática para informar que seu contrato se encerra em menos de 5 dias. E gostaríamos muito de continuar tendo você como nosso parceiro! 🤝 Me responda aqui e vamos renovar.";
+                }
+            }
+            return `https://wa.me/${clean}?text=${encodeURIComponent(msg)}`;
         }
         function calcVencimento(inicio, duracao) {
             if(!inicio || !duracao) return '';
@@ -342,12 +365,8 @@
         async function renovarContrato(tipo, id) {
             const novaData = prompt("Qual a data de início da nova renovação? (Formato AAAA-MM-DD)", new Date().toISOString().split('T')[0]);
             if(!novaData || novaData.length !== 10) return alert("Data inválida. Operação cancelada.");
-            
-            const docRef = db.collection(tipo).doc(id);
-            const doc = await docRef.get();
-            const duracao = doc.data().duracao || 1;
+            const docRef = db.collection(tipo).doc(id); const doc = await docRef.get(); const duracao = doc.data().duracao || 1;
             const novoVenc = calcVencimento(novaData, duracao);
-            
             await docRef.update({ inicio: novaData, vencimento: novoVenc });
             alert("Contrato renovado com sucesso até " + novoVenc);
         }
@@ -361,7 +380,7 @@
                 const isPago = c.ultimoPagamento ? (c.ultimoPagamento.toDate().getMonth() === mesAtual && c.ultimoPagamento.toDate().getFullYear() === anoAtual) : false;
                 const tipoCliente = valor > 0 ? `R$ ${valor.toFixed(2)}` : 'Parceria';
                 const statusPag = valor > 0 ? (isPago ? `<button class="btn-pago">Pago ✓</button>` : `<button class="btn-pagar" onclick="registrarPagamento('clientes','${c.id}')">Pagar</button>`) : '-';
-                html+=`<tr class="${vClass}"><td>${c.nome} <a href="${getWhatsAppLink(c.telefone, c.nome)}" target="_blank" class="whatsapp-icon">💬</a></td><td>${tipoCliente}</td><td>${c.vencimento || '-'}</td><td>${statusPag}</td><td><button class="btn-renovar" onclick="renovarContrato('clientes','${c.id}')">Renovar</button> <button class="btn-editar" onclick="editarCliente('${c.id}')">Editar</button> <button class="btn-excluir" onclick="deletarCliente('${c.id}')">Excluir</button></td></tr>`;
+                html+=`<tr class="${vClass}"><td>${c.nome} <a href="${getWhatsAppLink(c.telefone, c.vencimento)}" target="_blank" class="whatsapp-icon">💬</a></td><td>${tipoCliente}</td><td>${c.vencimento || '-'}</td><td>${statusPag}</td><td><button class="btn-renovar" onclick="renovarContrato('clientes','${c.id}')">Renovar</button> <button class="btn-editar" onclick="editarCliente('${c.id}')">Editar</button> <button class="btn-excluir" onclick="deletarCliente('${c.id}')">Excluir</button></td></tr>`;
             }); 
             document.getElementById('lista-clientes').innerHTML=html||'<tr><td colspan="5">Nenhum cliente</td></tr>'; 
         }
@@ -386,40 +405,154 @@
                 const isPago = i.ultimoPagamento ? (i.ultimoPagamento.toDate().getMonth() === mesAtual && i.ultimoPagamento.toDate().getFullYear() === anoAtual) : false;
                 const tipoCliente = valor > 0 ? `R$ ${valor.toFixed(2)}` : 'Parceria';
                 const statusPag = valor > 0 ? (isPago ? `<button class="btn-pago">Pago ✓</button>` : `<button class="btn-pagar" onclick="registrarPagamento('independentes','${i.id}')">Pagar</button>`) : '-';
-                html+=`<tr class="${vClass}"><td>${i.nome} <a href="${getWhatsAppLink(i.telefone, i.nome)}" target="_blank" class="whatsapp-icon">💬</a></td><td>${tipoCliente}</td><td>${i.vencimento || '-'}</td><td>${statusPag}</td><td><button class="btn-renovar" onclick="renovarContrato('independentes','${i.id}')">Renovar</button> <button class="btn-editar" onclick="editarInd('${i.id}')">Editar</button> <button class="btn-excluir" onclick="deletarInd('${i.id}')">Excluir</button></td></tr>`;
+                html+=`<tr class="${vClass}"><td>${i.nome} <a href="${getWhatsAppLink(i.telefone, i.vencimento)}" target="_blank" class="whatsapp-icon">💬</a></td><td>${tipoCliente}</td><td>${i.vencimento || '-'}</td><td>${statusPag}</td><td><button class="btn-renovar" onclick="renovarContrato('independentes','${i.id}')">Renovar</button> <button class="btn-editar" onclick="editarInd('${i.id}')">Editar</button> <button class="btn-excluir" onclick="deletarInd('${i.id}')">Excluir</button></td></tr>`;
             }); 
             document.getElementById('lista-independentes').innerHTML=html||'<tr><td colspan="5">Nenhum independente</td></tr>'; 
         }
 
         // --- CONTRATOS ---
-        function mudarFormContrato() { const tipo = document.getElementById('contrato-tipo').value; document.getElementById('form-parceiro').style.display = tipo === 'parceiro' ? 'block' : 'none'; document.getElementById('form-cliente').style.display = tipo === 'cliente' ? 'block' : 'none'; document.getElementById('form-independente').style.display = tipo === 'independente' ? 'block' : 'none'; }
+        function mudarFormContrato() { 
+            const tipo = document.getElementById('contrato-tipo').value; 
+            document.getElementById('form-parceiro').style.display = tipo === 'parceiro' ? 'block' : 'none'; 
+            document.getElementById('form-cliente').style.display = tipo === 'cliente' ? 'block' : 'none'; 
+            document.getElementById('form-independente').style.display = tipo === 'independente' ? 'block' : 'none'; 
+            
+            if(tipo === 'cliente') {
+                let html = '';
+                pontos.forEach(p => { html += `<label><input type="checkbox" class="contrato-ponto-check" value="${p.id}"> ${p.nome}</label>`; });
+                document.getElementById('contrato-cliente-pontos-checkbox').innerHTML = html;
+            }
+        }
 
         function gerarContratoParceiro() {
-            const nome = document.getElementById('contrato-parceiro-nome').value; const cpf = document.getElementById('contrato-parceiro-cpf').value; const endereco = document.getElementById('contrato-parceiro-endereco').value; const equip = document.getElementById('contrato-parceiro-equipamentos').value; const acordo = document.getElementById('contrato-parceiro-acordo').value; const inicio = document.getElementById('contrato-parceiro-inicio').value; const duracao = document.getElementById('contrato-parceiro-duracao').value;
+            const nome = document.getElementById('contrato-parceiro-nome').value; 
+            const cpf = document.getElementById('contrato-parceiro-cpf').value; 
+            const endereco = document.getElementById('contrato-parceiro-endereco').value; 
+            const equip = document.getElementById('contrato-parceiro-equipamentos').value; 
+            const acordo = document.getElementById('contrato-parceiro-acordo').value; 
+            const inicio = document.getElementById('contrato-parceiro-inicio').value; 
+            const duracao = document.getElementById('contrato-parceiro-duracao').value;
+            
             if(!nome || !cpf || !inicio) return alert('Preencha os dados do parceiro!');
             const contratadaStr = getContratadaString();
-            const texto = `<h2 style="text-align:center;">CONTRATO DE PARCERIA DE MÍDIA</h2><p>As partes firmam o presente Contrato de Parceria de Mídia, conforme as seguintes cláusulas:</p><p><strong>CLÁUSULA 1ª - OBJETO</strong><br>${contratadaStr} instalará ${equip} no ESTABELECIMENTO (${nome}), localizado na ${endereco}, para exibição de conteúdo publicitário.</p><p><strong>CLÁUSULA 2ª - INSTALAÇÃO</strong><br>A TV será instalada pela FORUS MÍDIA em local de visibilidade estratégica.</p><p><strong>CLÁUSULA 3ª - OBRIGAÇÕES DO ESTABELECIMENTO</strong><br>I - Manter a TV em local seguro;<br>II - Permitir acesso da FORUS MÍDIA;<br>III - Não desligar ou desconectar a TV;<br>IV - Restituir a TV em perfeito estado ao final do contrato.</p><p><strong>CLÁUSULA 4ª - OBRIGAÇÕES DA FORUS MÍDIA</strong><br>I - Realizar a instalação;<br>II - Manter o conteúdo atualizado;<br>III - Realizar manutenção preventiva;<br>IV - Retirar o equipamento ao final do contrato.</p><p><strong>CLÁUSULA 5ª - CONTRAPARTIDA</strong><br>Como contrapartida, o ESTABELECIMENTO receberá: <strong>${acordo}</strong>.</p><p><strong>CLÁUSULA 6ª - PRAZO</strong><br>Prazo de ${duracao} meses, iniciando em ${inicio}, renovando-se automaticamente.</p><p><strong>CLÁUSULA 7ª - RESCISÃO</strong><br>Rescisível mediante aviso prévio de 30 dias.</p><br><p style="text-align:center;">Assinaturas: _______________________</p>`;
+            
+            const texto = `
+                <h2 style="text-align:center;">CONTRATO DE PARCERIA DE MÍDIA</h2>
+                <p>Pelo presente instrumento, <strong>${contratadaStr}</strong>, e o ESTABELECIMENTO (<strong>${nome}</strong>), inscrito no CPF/CNPJ sob o nº ${cpf}, localizado na ${endereco}, firmam o presente Contrato de Parceria de Mídia, conforme as cláusulas abaixo:</p>
+                <p><strong>CLÁUSULA 1ª - DO OBJETO</strong><br>A CONTRATADA instalará ${equip} no ESTABELECIMENTO para exibição de conteúdo publicitário, cedendo espaço visual exclusivo para este fim.</p>
+                <p><strong>CLÁUSULA 2ª - DA INSTALAÇÃO</strong><br>A TV será instalada pela CONTRATADA em local de alta visibilidade e segurança, a ser definido em comum acordo entre as partes.</p>
+                <p><strong>CLÁUSULA 3ª - OBRIGAÇÕES DO ESTABELECIMENTO</strong><br>O ESTABELECIMENTO se compromete a:<br>I - Fornecer ponto de energia elétrica adequado para o funcionamento do equipamento;<br>II - Manter a TV em local seguro, protegida de umidade, calor excessivo e impactos;<br>III - Comunicar imediatamente à CONTRATADA qualquer dano, defeito ou irregularidade no equipamento;<br>IV - Não desligar, desconectar, mover ou alterar o equipamento sem autorização da CONTRATADA.</p>
+                <p><strong>CLÁUSULA 4ª - OBRIGAÇÕES DA CONTRATADA</strong><br>A CONTRATADA se compromete a:<br>I - Realizar a instalação completa do equipamento;<br>II - Manter o conteúdo publicitário atualizado e em funcionamento;<br>III - Realizar manutenção preventiva e corretiva de defeitos de fábrica;<br>IV - Retirar o equipamento ao final do contrato, se for o caso.</p>
+                <p><strong>CLÁUSULA 5ª - PROPRIEDADE E RISCOS</strong><br>O equipamento instalado é de propriedade exclusiva da CONTRATADA. Em caso de roubo, furto, incêndio, alagamento ou dano causado por negligência ou mau uso por parte do ESTABELECIMENTO, seus funcionários ou clientes, o ESTABELECIMENTO se obriga a indenizar a CONTRATADA pelo valor de mercado do equipamento, no prazo de até 30 (trinta) dias.</p>
+                <p><strong>CLÁUSULA 6ª - DA CONTRAPARTIDA</strong><br>Como contrapartida pela utilização do espaço e energia elétrica, o ESTABELECIMENTO receberá: <strong>${acordo}</strong>.</p>
+                <p><strong>CLÁUSULA 7ª - DO PRAZO E RESCISÃO</strong><br>O prazo deste contrato é de ${duracao} meses, iniciando em ${inicio}. O contrato poderá ser rescindido por qualquer das partes mediante aviso prévio mínimo de 30 (trinta) dias. Caso o ESTABELECIMENTO solicite a rescisão antecipada sem o aviso prévio estipulado, este ficará obrigado a pagar à CONTRATADA o valor equivalente a uma mensalidade de publicidade a título de multa operacional.</p>
+                <br><p style="text-align:center;">Local e Data: _______________________</p><p style="text-align:center;">Assinatura CONTRATADA: _______________________</p><p style="text-align:center;">Assinatura ESTABELECIMENTO: _______________________</p>`;
+            
+            const dadosSalvar = { tipo: 'Parceiro', nome, cpf, inicio, duracao, textoHtml: texto, criadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+            db.collection('contratos').add(dadosSalvar);
             imprimirContrato(texto, `Contrato Parceiro - ${nome}`);
         }
 
         function gerarContratoCliente() {
-            const nome = document.getElementById('contrato-cliente-nome').value; const cpf = document.getElementById('contrato-cliente-cpf').value; const pts = document.getElementById('contrato-cliente-pontos').value; const valor = document.getElementById('contrato-cliente-valor').value; const inicio = document.getElementById('contrato-cliente-inicio').value; const duracao = document.getElementById('contrato-cliente-duracao').value;
-            if(!nome || !cpf || !inicio) return alert('Preencha todos os dados!');
+            const nome = document.getElementById('contrato-cliente-nome').value; 
+            const cpf = document.getElementById('contrato-cliente-cpf').value; 
+            const valor = document.getElementById('contrato-cliente-valor').value; 
+            const inicio = document.getElementById('contrato-cliente-inicio').value; 
+            const duracao = document.getElementById('contrato-cliente-duracao').value;
+            const pontosSelecionados = Array.from(document.querySelectorAll('.contrato-ponto-check:checked')).map(el => el.value);
+            
+            if(!nome || !cpf || !inicio) return alert('Preencha todos os dados obrigatórios!');
+            
+            const diaVenc = inicio.split('-')[2]; // Pega o dia da data de inicio
+            const ptsNomes = pontosSelecionados.map(pid => { const p = pontos.find(pt => pt.id === pid); return p ? p.nome : ''; }).join(', ') || 'Não selecionados';
             const venc = calcVencimento(inicio, duracao);
             const contratadaStr = getContratadaString();
-            const texto = `<h2 style="text-align:center;">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE MÍDIA</h2><p><strong>CONTRATANTE:</strong> ${nome}, CPF/CNPJ ${cpf}.</p><p><strong>CONTRATADA:</strong> ${contratadaStr}.</p><hr><p><strong>CLÁUSULA 1ª - DO OBJETO</strong><br>Veiular mídias nas telas: <strong>${pts}</strong>.</p><p><strong>CLÁUSULA 2ª - DO PRAZO</strong><br>Vigência de ${duracao} meses, de ${inicio} a ${venc}.</p><p><strong>CLÁUSULA 3ª - DO VALOR</strong><br>Valor mensal de <strong>R$ ${valor}</strong>. Inadimplência > 10 dias autoriza suspensão.</p><p><strong>CLÁUSULA 4ª - DO CONTEÚDO</strong><br>O CONTRATANTE isenta a CONTRATADA de direitos autorais do material.</p><p><strong>CLÁUSULA 5ª - RESCISÃO</strong><br>Aviso prévio de 30 dias.</p><br><p style="text-align:center;">Assinaturas: _______________________</p>`;
+            
+            const texto = `
+                <h2 style="text-align:center;">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE MÍDIA</h2>
+                <p>Pelo presente instrumento, <strong>${nome}</strong>, inscrito no CPF/CNPJ sob o nº ${cpf}, doravante denominado CONTRATANTE, e <strong>${contratadaStr}</strong>, doravante denominada CONTRATADA, firmam o presente contrato conforme cláusulas abaixo:</p>
+                <p><strong>CLÁUSULA 1ª - DO OBJETO</strong><br>A CONTRATADA se compromete a veicular as mídias publicitárias do CONTRATANTE em formato de playlist/rodízio de conteúdo, em suas telas de TV instaladas nos seguintes estabelecimentos parceiros: <strong>${ptsNomes}</strong>.</p>
+                <p><strong>CLÁUSULA 2ª - DO PRAZO</strong><br>O presente contrato tem vigência de ${duracao} meses, iniciando em ${inicio} e findando em ${venc}, renovando-se automaticamente por iguais períodos.</p>
+                <p><strong>CLÁUSULA 3ª - DO VALOR E PAGAMENTO</strong><br>Pela prestação dos serviços, o CONTRATANTE pagará à CONTRATADA o valor mensal de <strong>R$ ${valor}</strong>, com vencimento no dia <strong>${diaVenc}</strong> de cada mês. O atraso no pagamento incorrerá em multa de 2% (dois por cento) e juros de 1% (um por cento) ao mês. A inadimplência superior a 15 (quinze) dias autoriza a CONTRATADA a suspender imediatamente a veiculação das mídias.</p>
+                <p><strong>CLÁUSULA 4ª - DO MATERIAL PUBLICITÁRIO</strong><br>O CONTRATANTE é responsável por fornecer o material publicitário (vídeos/imagens) em formato digital compatível com o sistema (MP4/JPG, resolução 1920x1080) e com antecedência mínima de 3 (três) dias úteis para programação. Caso o CONTRATANTE necessite da criação de artes ou vídeos pela CONTRATADA, isto será tratado como serviço à parte.</p>
+                <p><strong>CLÁUSULA 5ª - DA RESCISÃO</strong><br>O presente contrato possui fidelidade pelo prazo estipulado na Cláusula 2ª. Em caso de rescisão antecipada por parte do CONTRATANTE, sem justa causa, este ficará obrigado a pagar uma multa compensatória equivalente a 30% (trinta por cento) do valor total dos meses restantes do contrato, além da quitação de qualquer débito vencido até a data da comunicação da rescisão. A rescisão será efetivada 30 (trinta) dias após a notificação formal.</p>
+                <br><p style="text-align:center;">Local e Data: _______________________</p><p style="text-align:center;">Assinatura CONTRATADA: _______________________</p><p style="text-align:center;">Assinatura CONTRATANTE: _______________________</p>`;
+            
+            const dadosSalvar = { tipo: 'Cliente', nome, cpf, inicio, duracao, pontosIds: pontosSelecionados, textoHtml: texto, criadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+            db.collection('contratos').add(dadosSalvar);
             imprimirContrato(texto, `Contrato Cliente - ${nome}`);
         }
 
         function gerarContratoIndependente() {
-            const nome = document.getElementById('contrato-ind-nome').value; const cpf = document.getElementById('contrato-ind-cpf').value; const equip = document.getElementById('contrato-ind-equipamento').value; const valor = document.getElementById('contrato-ind-valor').value; const inicio = document.getElementById('contrato-ind-inicio').value; const duracao = document.getElementById('contrato-ind-duracao').value;
+            const nome = document.getElementById('contrato-ind-nome').value; 
+            const cpf = document.getElementById('contrato-ind-cpf').value; 
+            const equip = document.getElementById('contrato-ind-equipamento').value; 
+            const valor = document.getElementById('contrato-ind-valor').value; 
+            const inicio = document.getElementById('contrato-ind-inicio').value; 
+            const duracao = document.getElementById('contrato-ind-duracao').value;
+            
             if(!nome || !cpf || !inicio) return alert('Preencha todos os dados!');
+            
+            const diaVenc = inicio.split('-')[2]; // Pega o dia da data de inicio
             const contratadaStr = getContratadaString();
-            const texto = `<h2 style="text-align:center;">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE MÍDIA</h2><p><strong>CONTRATANTE:</strong> ${nome}, CPF/CNPJ ${cpf}.</p><p><strong>CONTRATADA:</strong> ${contratadaStr}.</p><hr><p><strong>CLÁUSULA 1ª - DO OBJETO</strong><br>Gestão de conteúdo para: <strong>${equip}</strong>.</p><p><strong>CLÁUSULA 2ª - DO PRAZO</strong><br>Vigência de ${duracao} meses, de ${inicio}.</p><p><strong>CLÁUSULA 3ª - DO VALOR</strong><br>Valor mensal de <strong>R$ ${valor}</strong>.</p><p><strong>CLÁUSULA 4ª - DA MANUTENÇÃO</strong><br>Manutenção física por conta do CONTRATANTE. Gestão lógica por conta da CONTRATADA.</p><p><strong>CLÁUSULA 5ª - RESCISÃO</strong><br>Aviso prévio de 30 dias.</p><br><p style="text-align:center;">Assinaturas: _______________________</p>`;
+            
+            const texto = `
+                <h2 style="text-align:center;">CONTRATO DE GESTÃO DE CONTEÚDO DIGITAL (INDEPENDENTE)</h2>
+                <p>Pelo presente instrumento, <strong>${nome}</strong>, inscrito no CPF/CNPJ sob o nº ${cpf}, doravante denominado CONTRATANTE, e <strong>${contratadaStr}</strong>, doravante denominada CONTRATADA, firmam o presente contrato conforme cláusulas abaixo:</p>
+                <p><strong>CLÁUSULA 1ª - DO OBJETO</strong><br>A CONTRATADA prestará serviços de gestão de conteúdo digital (atualização, programação e monitoramento remoto de mídias) para o equipamento de propriedade do CONTRATANTE, descrito como: <strong>${equip}</strong>.</p>
+                <p><strong>CLÁUSULA 2ª - DO ACESSO E INFRAESTRUTURA</strong><br>Para a execução dos serviços, o CONTRATANTE se obriga a:<br>I - Manter o equipamento conectado à internet de forma estável;<br>II - Fornecer e manter as senhas de acesso ao equipamento (TV/Player) atualizadas junto à CONTRATADA;<br>III - Manter o equipamento ligado e em funcionamento durante o horário comercial estipulado.</p>
+                <p><strong>CLÁUSULA 3ª - DO PRAZO E VALOR</strong><br>O presente contrato tem vigência de ${duracao} meses, iniciando em ${inicio}, renovando-se automaticamente. Pela prestação dos serviços, o CONTRATANTE pagará à CONTRATADA o valor mensal de <strong>R$ ${valor}</strong>, com vencimento no dia <strong>${diaVenc}</strong> de cada mês. O atraso no pagamento incorrerá em multa de 2% e juros de 1% ao mês.</p>
+                <p><strong>CLÁUSULA 4ª - MANUTENÇÃO E QUEBRA DE EQUIPAMENTO</strong><br>A manutenção física, conserto ou substituição do equipamento (TV, cabos, acessórios) é de responsabilidade e custo exclusivo do CONTRATANTE. A CONTRATADA responsabiliza-se apenas pela gestão lógica do conteúdo. Em caso de defeito ou quebra do equipamento que impossibilite a exibição, a cobrança mensal será pausada até a substituição por parte do CONTRATANTE. Se o equipamento não for substituído em até 30 (trinta) dias, este contrato será rescindido automaticamente.</p>
+                <p><strong>CLÁUSULA 5ª - DA RESCISÃO</strong><br>O presente contrato possui fidelidade pelo prazo estipulado na Cláusula 3ª. Em caso de rescisão antecipada por parte do CONTRATANTE, sem justa causa, este ficará obrigado a pagar uma multa compensatória equivalente a 30% (trinta por cento) do valor total dos meses restantes do contrato, além da quitação de qualquer débito vencido. A rescisão será efetivada 30 (trinta) dias após a notificação formal.</p>
+                <br><p style="text-align:center;">Local e Data: _______________________</p><p style="text-align:center;">Assinatura CONTRATADA: _______________________</p><p style="text-align:center;">Assinatura CONTRATANTE: _______________________</p>`;
+            
+            const dadosSalvar = { tipo: 'Independente', nome, cpf, inicio, duracao, textoHtml: texto, criadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+            db.collection('contratos').add(dadosSalvar);
             imprimirContrato(texto, `Contrato Independente - ${nome}`);
         }
 
-        function imprimirContrato(conteudo, titulo) { const janela = window.open('', '', 'width=800,height=600'); janela.document.write(`<html><head><title>${titulo}</title></head><body style="font-family:Arial; padding:40px; line-height: 1.6;">${conteudo}</body></html>`); janela.document.close(); janela.print(); }
+        function imprimirContrato(conteudo, titulo) { const janela = window.open('', '', 'width=800,height=600'); janela.document.write(`<html><head><title>${titulo}</title></head><body style="font-family:Arial; padding:40px; line-height: 1.6;">${conteudo}</body></html>`); janela.document.close(); setTimeout(() => janela.print(), 500); }
+
+        // Histórico Contratos
+        function visualizarContrato(id) { const c = contratos.find(x=>x.id===id); if(c) imprimirContrato(c.textoHtml, `Contrato ${c.tipo} - ${c.nome}`); }
+        function clonarContrato(id) {
+            const c = contratos.find(x=>x.id===id);
+            if(!c) return;
+            document.getElementById('contrato-tipo').value = c.tipo.toLowerCase();
+            mudarFormContrato(); 
+            
+            if(c.tipo === 'Parceiro') {
+                document.getElementById('contrato-parceiro-nome').value = c.nome || '';
+                document.getElementById('contrato-parceiro-cpf').value = c.cpf || '';
+                document.getElementById('contrato-parceiro-inicio').value = c.inicio || '';
+                document.getElementById('contrato-parceiro-duracao').value = c.duracao || 12;
+            } else if(c.tipo === 'Cliente') {
+                document.getElementById('contrato-cliente-nome').value = c.nome || '';
+                document.getElementById('contrato-cliente-cpf').value = c.cpf || '';
+                document.getElementById('contrato-cliente-inicio').value = c.inicio || '';
+                document.getElementById('contrato-cliente-duracao').value = c.duracao || 3;
+                setTimeout(() => { 
+                    document.querySelectorAll('.contrato-ponto-check').forEach(el => {
+                        if(c.pontosIds) el.checked = c.pontosIds.includes(el.value);
+                    });
+                }, 200);
+            } else if(c.tipo === 'Independente') {
+                document.getElementById('contrato-ind-nome').value = c.nome || '';
+                document.getElementById('contrato-ind-cpf').value = c.cpf || '';
+                document.getElementById('contrato-ind-inicio').value = c.inicio || '';
+                document.getElementById('contrato-ind-duracao').value = c.duracao || 3;
+            }
+            window.scrollTo(0, 0); 
+        }
+        function deletarContrato(id) { if(confirm('Excluir histórico deste contrato?')) db.collection('contratos').doc(id).delete(); }
+        function renderContratos() { 
+            let html = '';
+            contratos.forEach(c => {
+                const dataCriacao = c.criadoEm ? c.criadoEm.toDate().toLocaleDateString('pt-BR') : '-';
+                html += `<tr><td>${c.tipo}</td><td>${c.nome}</td><td>${dataCriacao}</td><td><button class="btn-visualizar" onclick="visualizarContrato('${c.id}')">👁️ Ver</button> <button class="btn-clonar" onclick="clonarContrato('${c.id}')">✏️ Clonar</button> <button class="btn-excluir" onclick="deletarContrato('${c.id}')">Excluir</button></td></tr>`;
+            });
+            document.getElementById('lista-contratos').innerHTML = html || '<tr><td colspan="4">Nenhum contrato gerado ainda</td></tr>';
+        }
 
     </script>
 </body>
