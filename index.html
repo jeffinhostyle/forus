@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forus Mídia - Sistema de Gestão</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; display: flex; background-color: #f4f7f6; }
+        
+        /* LOGIN */
+        .login-container { display: flex; justify-content: center; align-items: center; width: 100vw; height: 100vh; background-color: #1a252f; }
+        .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 350px; text-align: center; }
+        .login-box h2 { color: #1a252f; margin-top: 0; }
+        .login-box p { font-size: 13px; color: #666; margin-bottom: 20px; }
+        .login-box input { width: 100%; padding: 10px; margin: 5px 0 15px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .login-box button { width: 100%; padding: 10px; background-color: #1abc9c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        .login-box button:hover { background-color: #16a085; }
+        #login-erro { color: #e74c3c; font-size: 13px; display: none; margin-top: 10px; }
+
+        /* APP */
+        #app-container { display: none; width: 100%; }
+        .sidebar { width: 250px; background-color: #1a252f; color: white; padding: 20px; height: 100vh; box-sizing: border-box; flex-shrink: 0; }
+        .sidebar h2 { margin-top: 0; font-size: 22px; color: #1abc9c; }
+        .sidebar button { display: block; width: 100%; padding: 10px; margin-bottom: 10px; background-color: #2c3e50; color: white; border: none; cursor: pointer; text-align: left; border-radius: 5px; }
+        .sidebar button:hover { background-color: #1abc9c; }
+        .btn-sair { background-color: #c0392b !important; margin-top: 30px !important; }
+        .btn-sair:hover { background-color: #e74c3c !important; }
+        .main { flex: 1; padding: 20px; overflow-y: auto; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h3 { margin-top: 0; color: #2c3e50; }
+        input, select, textarea { width: 100%; padding: 8px; margin: 5px 0 15px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        label { font-weight: bold; color: #555; font-size: 14px; display: block; }
+        .btn-salvar { background-color: #1abc9c; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-salvar:hover { background-color: #16a085; }
+        .btn-editar { background-color: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .btn-excluir { background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .btn-pagar { background-color: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .btn-pago { background-color: #95a5a6; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .btn-renovar { background-color: #f39c12; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        
+        /* DASHBOARD */
+        .dashboard-cards { display: flex; gap: 20px; flex-wrap: wrap; }
+        .dash-card { flex: 1; min-width: 150px; color: white; padding: 20px; border-radius: 8px; text-align: center; }
+        .dash-card h1 { margin: 0; font-size: 40px; }
+        .dash-card p { margin: 5px 0 0 0; font-size: 16px; }
+        
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+        .checkbox-group label { display: flex; align-items: center; font-weight: normal; background: #eee; padding: 5px 10px; border-radius: 15px; }
+        .contrato-box { display: none; background: #f9f9f9; padding: 15px; border-radius: 5px; margin-top: 10px; }
+        
+        /* ALERTAS VENCIMENTO */
+        .alerta-amarelo { background-color: #fff3cd !important; }
+        .alerta-vermelho { background-color: #f8d7da !important; }
+        .whatsapp-icon { color: #25D366; font-size: 18px; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-container" class="login-container">
+        <div class="login-box">
+            <h2>FORUS MÍDIA</h2>
+            <p>Acesse o painel de controle</p>
+            <input type="email" id="login-email" placeholder="Seu e-mail cadastrado">
+            <input type="password" id="login-senha" placeholder="Sua senha" onkeydown="if(event.key==='Enter')fazerLogin()">
+            <button onclick="fazerLogin()">Entrar</button>
+            <div id="login-erro">E-mail ou senha incorretos.</div>
+        </div>
+    </div>
+
+    <!-- APP PRINCIPAL -->
+    <div id="app-container">
+        <div class="sidebar">
+            <h2>FORUS MÍDIA</h2>
+            <button onclick="showSection('dashboard')">📊 Dashboard</button>
+            <button onclick="showSection('dados')">⚙️ Meus Dados</button>
+            <button onclick="showSection('pontos')">📌 Pontos (Locais)</button>
+            <button onclick="showSection('clientes')">💰 Clientes</button>
+            <button onclick="showSection('independentes')">📺 Independentes</button>
+            <button onclick="showSection('contratos')">📄 Contratos</button>
+            <button class="btn-sair" onclick="fazerLogout()">🚪 Sair</button>
+        </div>
+
+        <div class="main">
+            <!-- DASHBOARD -->
+            <div id="dashboard" class="section">
+                <h2>Painel de Controle Forus Mídia</h2>
+                <div class="dashboard-cards">
+                    <div class="dash-card" style="background-color: #3498db;"><h1 id="dash-pontos">0</h1><p>Pontos Ativos</p></div>
+                    <div class="dash-card" style="background-color: #2ecc71;"><h1 id="dash-pagantes">0</h1><p>Clientes Pagantes</p></div>
+                    <div class="dash-card" style="background-color: #9b59b6;"><h1 id="dash-parceiros">0</h1><p>Clientes Parceiros</p></div>
+                    <div class="dash-card" style="background-color: #e74c3c;"><h1 id="dash-inadimplentes">0</h1><p>Inadimplentes</p></div>
+                </div>
+            </div>
+
+            <!-- MEUS DADOS -->
+            <div id="dados" class="section" style="display: none;">
+                <div class="card">
+                    <h3>Dados da Forus Mídia (Para Contratos)</h3>
+                    <label>Nome da Empresa</label><input type="text" id="dados-empresa" value="FORUS MÍDIA">
+                    <label>CNPJ (Deixe vazio se não tiver)</label><input type="text" id="dados-cnpj" placeholder="00.000.000/0001-00">
+                    <label>Seu Nome Completo</label><input type="text" id="dados-nome">
+                    <label>Seu CPF</label><input type="text" id="dados-cpf" placeholder="000.000.000-00">
+                    <button class="btn-salvar" onclick="salvarDados()">Salvar Dados</button>
+                </div>
+            </div>
+
+            <!-- PONTOS -->
+            <div id="pontos" class="section" style="display: none;">
+                <div class="card">
+                    <h3 id="titulo-ponto">Cadastrar Novo Ponto</h3>
+                    <input type="hidden" id="ponto-id">
+                    <label>Nome do Ponto</label><input type="text" id="ponto-nome">
+                    <label>Endereço Completo</label><input type="text" id="ponto-endereco">
+                    <label>Equipamentos Instalados</label><textarea id="ponto-equipamentos" rows="3"></textarea>
+                    <button class="btn-salvar" onclick="salvarPonto()">Salvar Ponto</button>
+                    <button class="btn-salvar" style="background-color:#ccc; display:none;" id="btn-cancelar-ponto" onclick="cancelarEdicaoPonto()">Cancelar</button>
+                </div>
+                <div class="card">
+                    <h3>Pontos Cadastrados</h3>
+                    <table><thead><tr><th>Nome</th><th>Endereço</th><th>Equipamentos</th><th>Ações</th></tr></thead><tbody id="lista-pontos"></tbody></table>
+                </div>
+            </div>
+
+            <!-- CLIENTES -->
+            <div id="clientes" class="section" style="display: none;">
+                <div class="card">
+                    <h3 id="titulo-cliente">Cadastrar Novo Cliente</h3>
+                    <input type="hidden" id="cli-id">
+                    <label>Nome / Empresa</label><input type="text" id="cli-nome">
+                    <label>Telefone (WhatsApp)</label><input type="text" id="cli-telefone">
+                    <label>Valor Mensal (R$) - Deixe 0 se for parceria</label><input type="number" id="cli-valor" step="0.01">
+                    <label>Data de Início</label><input type="date" id="cli-inicio">
+                    <label>Duração do Contrato</label>
+                    <select id="cli-duracao"><option value="1">1 Mês</option><option value="3" selected>3 Meses</option><option value="6">6 Meses</option><option value="12">12 Meses</option></select>
+                    <label>Selecione os Pontos</label>
+                    <div id="cli-pontos-checkbox" class="checkbox-group"></div>
+                    <button class="btn-salvar" onclick="salvarCliente()">Salvar Cliente</button>
+                    <button class="btn-salvar" style="background-color:#ccc; display:none;" id="btn-cancelar-cliente" onclick="cancelarEdicaoCliente()">Cancelar</button>
+                </div>
+                <div class="card">
+                    <h3>Clientes Cadastrados</h3>
+                    <table><thead><tr><th>Nome</th><th>Valor</th><th>Vencimento</th><th>Pagamento</th><th>Ações</th></tr></thead><tbody id="lista-clientes"></tbody></table>
+                </div>
+            </div>
+
+            <!-- INDEPENDENTES -->
+            <div id="independentes" class="section" style="display: none;">
+                <div class="card">
+                    <h3>Cadastrar Cliente Independente</h3>
+                    <input type="hidden" id="ind-id">
+                    <label>Nome / Empresa</label><input type="text" id="ind-nome">
+                    <label>Telefone (WhatsApp)</label><input type="text" id="ind-telefone">
+                    <label>Equipamento do Cliente</label><input type="text" id="ind-equipamento">
+                    <label>Valor Mensal (R$) - Deixe 0 se for parceria</label><input type="number" id="ind-valor" step="0.01">
+                    <label>Data de Início</label><input type="date" id="ind-inicio">
+                    <label>Duração do Contrato</label>
+                    <select id="ind-duracao"><option value="1">1 Mês</option><option value="3" selected>3 Meses</option><option value="6">6 Meses</option><option value="12">12 Meses</option></select>
+                    <button class="btn-salvar" onclick="salvarIndependente()">Salvar</button>
+                    <button class="btn-salvar" style="background-color:#ccc; display:none;" id="btn-cancelar-ind" onclick="cancelarEdicaoInd()">Cancelar</button>
+                </div>
+                <div class="card">
+                    <h3>Independentes Cadastrados</h3>
+                    <table><thead><tr><th>Nome</th><th>Valor</th><th>Vencimento</th><th>Pagamento</th><th>Ações</th></tr></thead><tbody id="lista-independentes"></tbody></table>
+                </div>
+            </div>
+
+            <!-- CONTRATOS -->
+            <div id="contratos" class="section" style="display: none;">
+                <div class="card">
+                    <h3>Gerador de Contratos Forus Mídia</h3>
+                    <label>Tipo de Contrato</label>
+                    <select id="contrato-tipo" onchange="mudarFormContrato()">
+                        <option value="">Selecione o tipo...</option>
+                        <option value="parceiro">Contrato de Parceria de Mídia</option>
+                        <option value="cliente">Contrato de Prestação de Serviços (Anunciante)</option>
+                        <option value="independente">Contrato de Prestação de Serviços (Gestão de TV)</option>
+                    </select>
+                    <div id="form-parceiro" class="contrato-box">
+                        <label>Nome do Estabelecimento/Parceiro</label><input type="text" id="contrato-parceiro-nome">
+                        <label>CPF/CNPJ do Parceiro</label><input type="text" id="contrato-parceiro-cpf">
+                        <label>Endereço do Estabelecimento</label><input type="text" id="contrato-parceiro-endereco">
+                        <label>Equipamentos que serão instalados</label><textarea id="contrato-parceiro-equipamentos" rows="2"></textarea>
+                        <label>Qual a contrapartida para o Parceiro?</label><input type="text" id="contrato-parceiro-acordo">
+                        <label>Data de Início</label><input type="date" id="contrato-parceiro-inicio">
+                        <label>Duração (meses)</label><input type="number" id="contrato-parceiro-duracao" value="12">
+                        <button class="btn-salvar" onclick="gerarContratoParceiro()">Gerar Contrato Parceiro</button>
+                    </div>
+                    <div id="form-cliente" class="contrato-box">
+                        <label>Nome do Cliente / Empresa</label><input type="text" id="contrato-cliente-nome">
+                        <label>CPF/CNPJ do Cliente</label><input type="text" id="contrato-cliente-cpf">
+                        <label>Pontos de Exibição</label><input type="text" id="contrato-cliente-pontos" placeholder="Ex: Padaria Central, Mercado do Zé">
+                        <label>Valor Mensal (R$)</label><input type="number" id="contrato-cliente-valor">
+                        <label>Data de Início</label><input type="date" id="contrato-cliente-inicio">
+                        <label>Duração (meses)</label><input type="number" id="contrato-cliente-duracao" value="3">
+                        <button class="btn-salvar" onclick="gerarContratoCliente()">Gerar Contrato Cliente</button>
+                    </div>
+                    <div id="form-independente" class="contrato-box">
+                        <label>Nome do Cliente / Empresa</label><input type="text" id="contrato-ind-nome">
+                        <label>CPF/CNPJ do Cliente</label><input type="text" id="contrato-ind-cpf">
+                        <label>Equipamento do Cliente</label><input type="text" id="contrato-ind-equipamento">
+                        <label>Valor Mensal (R$)</label><input type="number" id="contrato-ind-valor">
+                        <label>Data de Início</label><input type="date" id="contrato-ind-inicio">
+                        <label>Duração (meses)</label><input type="number" id="contrato-ind-duracao" value="3">
+                        <button class="btn-salvar" onclick="gerarContratoIndependente()">Gerar Contrato Independente</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDALerLyOn2l3nQ_1N6i8XsKMK8ICsCoyE",
+            authDomain: "forus-midia.firebaseapp.com",
+            projectId: "forus-midia",
+            storageBucket: "forus-midia.firebasestorage.app",
+            messagingSenderId: "817825235264",
+            appId: "1:817825235264:web:9b5fec0b6547faf6a27aa5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let pontos = [], clientes = [], independentes = [];
+
+        // --- AUTENTICAÇÃO ---
+        function fazerLogin() {
+            const email = document.getElementById('login-email').value;
+            const senha = document.getElementById('login-senha').value;
+            document.getElementById('login-erro').style.display = 'none';
+            auth.signInWithEmailAndPassword(email, senha).catch(e => document.getElementById('login-erro').style.display = 'block');
+        }
+        function fazerLogout() { auth.signOut(); }
+        
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
+                iniciarListenersFirebase();
+            } else {
+                document.getElementById('login-container').style.display = 'flex';
+                document.getElementById('app-container').style.display = 'none';
+            }
+        });
+
+        // --- BANCO DE DADOS EM TEMPO REAL ---
+        function iniciarListenersFirebase() {
+            db.collection('pontos').onSnapshot(snap => { pontos = []; snap.forEach(d => pontos.push({id: d.id, ...d.data()})); renderPontos(); renderDashboard(); });
+            db.collection('clientes').onSnapshot(snap => { clientes = []; snap.forEach(d => clientes.push({id: d.id, ...d.data()})); renderClientes(); renderDashboard(); });
+            db.collection('independentes').onSnapshot(snap => { independentes = []; snap.forEach(d => independentes.push({id: d.id, ...d.data()})); renderIndependentes(); renderDashboard(); });
+            carregarDados();
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('.section').forEach(el => el.style.display = 'none');
+            document.getElementById(id).style.display = 'block';
+            if(id === 'clientes') renderCheckboxes();
+        }
+
+        // --- HELPERS ---
+        function getVencimentoClass(dateStr) {
+            if(!dateStr) return '';
+            const hoje = new Date(); const venc = new Date(dateStr + "T23:59:59");
+            const diff = (venc - hoje) / (1000*60*60*24);
+            if(diff < 0) return 'alerta-vermelho';
+            if(diff <= 15) return 'alerta-vermelho';
+            if(diff <= 30) return 'alerta-amarelo';
+            return '';
+        }
+        function getWhatsAppLink(tel, nome) {
+            if(!tel) return '#';
+            let clean = tel.replace(/\D/g, '');
+            if(!clean.startsWith('55') && clean.length <= 11) clean = '55' + clean;
+            return `https://wa.me/${clean}?text=Olá ${nome}, aqui é da Forus Mídia!`;
+        }
+        function calcVencimento(inicio, duracao) {
+            if(!inicio || !duracao) return '';
+            const d = new Date(inicio + "T12:00:00"); d.setMonth(d.getMonth() + parseInt(duracao)); return d.toISOString().split('T')[0];
+        }
+
+        // --- DASHBOARD ---
+        function renderDashboard() {
+            document.getElementById('dash-pontos').innerText = pontos.length;
+            let pagantes = 0, parceiros = 0, inadimplentes = 0;
+            const mesAtual = new Date().getMonth(); const anoAtual = new Date().getFullYear();
+
+            [...clientes, ...independentes].forEach(c => {
+                const valor = parseFloat(c.valor) || 0;
+                if(valor > 0) {
+                    pagantes++;
+                    if(c.ultimoPagamento) {
+                        const dPag = c.ultimoPagamento.toDate();
+                        if(!(dPag.getMonth() === mesAtual && dPag.getFullYear() === anoAtual)) inadimplentes++;
+                    } else if(c.inicio && new Date(c.inicio + "T23:59:59") < new Date()) {
+                        inadimplentes++;
+                    }
+                } else { parceiros++; }
+            });
+            document.getElementById('dash-pagantes').innerText = pagantes;
+            document.getElementById('dash-parceiros').innerText = parceiros;
+            document.getElementById('dash-inadimplentes').innerText = inadimplentes;
+        }
+
+        // --- DADOS EMPRESA ---
+        function salvarDados() { const dados = { empresa: document.getElementById('dados-empresa').value, cnpj: document.getElementById('dados-cnpj').value, nome: document.getElementById('dados-nome').value, cpf: document.getElementById('dados-cpf').value }; db.collection('config').doc('empresa').set(dados).then(() => alert('Dados salvos!')); }
+        function carregarDados() { db.collection('config').doc('empresa').get().then(doc => { if(doc.exists) { const d=doc.data(); document.getElementById('dados-empresa').value=d.empresa||''; document.getElementById('dados-cnpj').value=d.cnpj||''; document.getElementById('dados-nome').value=d.nome||''; document.getElementById('dados-cpf').value=d.cpf||''; } }); }
+        function getContratadaString() { const e=document.getElementById('dados-empresa').value, cnpj=document.getElementById('dados-cnpj').value, n=document.getElementById('dados-nome').value, cpf=document.getElementById('dados-cpf').value; if(cnpj) return `<strong>${e}</strong>, inscrita no CNPJ sob o nº ${cnpj}`; else if(cpf&&n) return `<strong>${e}</strong>, representada por ${n}, portador do CPF sob o nº ${cpf}`; else return `<strong>${e||'FORUS MÍDIA'}</strong>`; }
+
+        // --- PONTOS ---
+        async function salvarPonto() {
+            const id = document.getElementById('ponto-id').value;
+            const dados = { nome: document.getElementById('ponto-nome').value, endereco: document.getElementById('ponto-endereco').value, equipamentos: document.getElementById('ponto-equipamentos').value };
+            if(!dados.nome || !dados.endereco) return alert('Preencha nome e endereço!');
+            try { id ? await db.collection('pontos').doc(id).update(dados) : await db.collection('pontos').add(dados); cancelarEdicaoPonto(); } catch(e) { alert(e.message); }
+        }
+        function editarPonto(id) { const p = pontos.find(x=>x.id===id); document.getElementById('ponto-id').value=p.id; document.getElementById('ponto-nome').value=p.nome; document.getElementById('ponto-endereco').value=p.endereco; document.getElementById('ponto-equipamentos').value=p.equipamentos; document.getElementById('titulo-ponto').innerText="Editando"; document.getElementById('btn-cancelar-ponto').style.display="inline-block"; }
+        function deletarPonto(id) { if(confirm('Excluir ponto?')) db.collection('pontos').doc(id).delete(); }
+        function cancelarEdicaoPonto() { document.getElementById('ponto-id').value=''; document.getElementById('ponto-nome').value=''; document.getElementById('ponto-endereco').value=''; document.getElementById('ponto-equipamentos').value=''; document.getElementById('titulo-ponto').innerText="Cadastrar Novo Ponto"; document.getElementById('btn-cancelar-ponto').style.display="none"; }
+        function renderPontos() { let html=''; pontos.forEach(p => { html+=`<tr><td>${p.nome}</td><td>${p.endereco}</td><td>${p.equipamentos}</td><td><button class="btn-editar" onclick="editarPonto('${p.id}')">Editar</button> <button class="btn-excluir" onclick="deletarPonto('${p.id}')">Excluir</button></td></tr>`; }); document.getElementById('lista-pontos').innerHTML=html||'<tr><td colspan="4">Nenhum ponto</td></tr>'; }
+
+        // --- CLIENTES ---
+        function renderCheckboxes() { let html=''; pontos.forEach(p => { html+=`<label><input type="checkbox" class="cli-ponto-check" value="${p.id}"> ${p.nome}</label>`; }); document.getElementById('cli-pontos-checkbox').innerHTML=html; }
+        async function salvarCliente() {
+            const id = document.getElementById('cli-id').value;
+            const dados = { nome: document.getElementById('cli-nome').value, telefone: document.getElementById('cli-telefone').value, valor: document.getElementById('cli-valor').value, inicio: document.getElementById('cli-inicio').value, duracao: document.getElementById('cli-duracao').value, pontosIds: Array.from(document.querySelectorAll('.cli-ponto-check:checked')).map(el=>el.value) };
+            dados.vencimento = calcVencimento(dados.inicio, dados.duracao);
+            if(!dados.nome || !dados.inicio) return alert('Preencha nome e data de início!');
+            try { if(id) { await db.collection('clientes').doc(id).update(dados); } else { await db.collection('clientes').add(dados); } cancelarEdicaoCliente(); } catch(e) { alert(e.message); }
+        }
+        function editarCliente(id) { const c = clientes.find(x=>x.id===id); document.getElementById('cli-id').value=c.id; document.getElementById('cli-nome').value=c.nome; document.getElementById('cli-telefone').value=c.telefone; document.getElementById('cli-valor').value=c.valor||0; document.getElementById('cli-inicio').value=c.inicio; document.getElementById('cli-duracao').value=c.duracao; renderCheckboxes(); document.querySelectorAll('.cli-ponto-check').forEach(el => { if(c.pontosIds) el.checked=c.pontosIds.includes(el.value); }); document.getElementById('titulo-cliente').innerText="Editando"; document.getElementById('btn-cancelar-cliente').style.display="inline-block"; }
+        function deletarCliente(id) { if(confirm('Excluir cliente?')) db.collection('clientes').doc(id).delete(); }
+        async function registrarPagamento(tipo, id) { await db.collection(tipo).doc(id).update({ ultimoPagamento: firebase.firestore.FieldValue.serverTimestamp() }); }
+        async function renovarContrato(tipo, id) {
+            const novaData = prompt("Qual a data de início da nova renovação? (Formato AAAA-MM-DD)", new Date().toISOString().split('T')[0]);
+            if(!novaData || novaData.length !== 10) return alert("Data inválida. Operação cancelada.");
+            
+            const docRef = db.collection(tipo).doc(id);
+            const doc = await docRef.get();
+            const duracao = doc.data().duracao || 1;
+            const novoVenc = calcVencimento(novaData, duracao);
+            
+            await docRef.update({ inicio: novaData, vencimento: novoVenc });
+            alert("Contrato renovado com sucesso até " + novoVenc);
+        }
+        function cancelarEdicaoCliente() { document.getElementById('cli-id').value=''; document.getElementById('cli-nome').value=''; document.getElementById('cli-telefone').value=''; document.getElementById('cli-valor').value=''; document.getElementById('cli-inicio').value=''; document.getElementById('cli-duracao').value='3'; renderCheckboxes(); document.getElementById('titulo-cliente').innerText="Cadastrar Novo Cliente"; document.getElementById('btn-cancelar-cliente').style.display="none"; }
+        function renderClientes() { 
+            let html=''; 
+            const mesAtual = new Date().getMonth(), anoAtual = new Date().getFullYear();
+            clientes.forEach(c => { 
+                const vClass = getVencimentoClass(c.vencimento);
+                const valor = parseFloat(c.valor)||0;
+                const isPago = c.ultimoPagamento ? (c.ultimoPagamento.toDate().getMonth() === mesAtual && c.ultimoPagamento.toDate().getFullYear() === anoAtual) : false;
+                const tipoCliente = valor > 0 ? `R$ ${valor.toFixed(2)}` : 'Parceria';
+                const statusPag = valor > 0 ? (isPago ? `<button class="btn-pago">Pago ✓</button>` : `<button class="btn-pagar" onclick="registrarPagamento('clientes','${c.id}')">Pagar</button>`) : '-';
+                html+=`<tr class="${vClass}"><td>${c.nome} <a href="${getWhatsAppLink(c.telefone, c.nome)}" target="_blank" class="whatsapp-icon">💬</a></td><td>${tipoCliente}</td><td>${c.vencimento || '-'}</td><td>${statusPag}</td><td><button class="btn-renovar" onclick="renovarContrato('clientes','${c.id}')">Renovar</button> <button class="btn-editar" onclick="editarCliente('${c.id}')">Editar</button> <button class="btn-excluir" onclick="deletarCliente('${c.id}')">Excluir</button></td></tr>`;
+            }); 
+            document.getElementById('lista-clientes').innerHTML=html||'<tr><td colspan="5">Nenhum cliente</td></tr>'; 
+        }
+
+        // --- INDEPENDENTES ---
+        async function salvarIndependente() {
+            const id = document.getElementById('ind-id').value;
+            const dados = { nome: document.getElementById('ind-nome').value, telefone: document.getElementById('ind-telefone').value, equipamento: document.getElementById('ind-equipamento').value, valor: document.getElementById('ind-valor').value, inicio: document.getElementById('ind-inicio').value, duracao: document.getElementById('ind-duracao').value };
+            dados.vencimento = calcVencimento(dados.inicio, dados.duracao);
+            if(!dados.nome || !dados.inicio) return alert('Preencha nome e data de início!');
+            try { if(id) { await db.collection('independentes').doc(id).update(dados); } else { await db.collection('independentes').add(dados); } cancelarEdicaoInd(); } catch(e) { alert(e.message); }
+        }
+        function editarInd(id) { const i = independentes.find(x=>x.id===id); document.getElementById('ind-id').value=i.id; document.getElementById('ind-nome').value=i.nome; document.getElementById('ind-telefone').value=i.telefone; document.getElementById('ind-equipamento').value=i.equipamento; document.getElementById('ind-valor').value=i.valor||0; document.getElementById('ind-inicio').value=i.inicio; document.getElementById('ind-duracao').value=i.duracao; document.getElementById('btn-cancelar-ind').style.display="inline-block"; }
+        function deletarInd(id) { if(confirm('Excluir?')) db.collection('independentes').doc(id).delete(); }
+        function cancelarEdicaoInd() { document.getElementById('ind-id').value=''; document.getElementById('ind-nome').value=''; document.getElementById('ind-telefone').value=''; document.getElementById('ind-equipamento').value=''; document.getElementById('ind-valor').value=''; document.getElementById('ind-inicio').value=''; document.getElementById('ind-duracao').value='3'; document.getElementById('btn-cancelar-ind').style.display="none"; }
+        function renderIndependentes() { 
+            let html=''; 
+            const mesAtual = new Date().getMonth(), anoAtual = new Date().getFullYear();
+            independentes.forEach(i => { 
+                const vClass = getVencimentoClass(i.vencimento);
+                const valor = parseFloat(i.valor)||0;
+                const isPago = i.ultimoPagamento ? (i.ultimoPagamento.toDate().getMonth() === mesAtual && i.ultimoPagamento.toDate().getFullYear() === anoAtual) : false;
+                const tipoCliente = valor > 0 ? `R$ ${valor.toFixed(2)}` : 'Parceria';
+                const statusPag = valor > 0 ? (isPago ? `<button class="btn-pago">Pago ✓</button>` : `<button class="btn-pagar" onclick="registrarPagamento('independentes','${i.id}')">Pagar</button>`) : '-';
+                html+=`<tr class="${vClass}"><td>${i.nome} <a href="${getWhatsAppLink(i.telefone, i.nome)}" target="_blank" class="whatsapp-icon">💬</a></td><td>${tipoCliente}</td><td>${i.vencimento || '-'}</td><td>${statusPag}</td><td><button class="btn-renovar" onclick="renovarContrato('independentes','${i.id}')">Renovar</button> <button class="btn-editar" onclick="editarInd('${i.id}')">Editar</button> <button class="btn-excluir" onclick="deletarInd('${i.id}')">Excluir</button></td></tr>`;
+            }); 
+            document.getElementById('lista-independentes').innerHTML=html||'<tr><td colspan="5">Nenhum independente</td></tr>'; 
+        }
+
+        // --- CONTRATOS ---
+        function mudarFormContrato() { const tipo = document.getElementById('contrato-tipo').value; document.getElementById('form-parceiro').style.display = tipo === 'parceiro' ? 'block' : 'none'; document.getElementById('form-cliente').style.display = tipo === 'cliente' ? 'block' : 'none'; document.getElementById('form-independente').style.display = tipo === 'independente' ? 'block' : 'none'; }
+
+        function gerarContratoParceiro() {
+            const nome = document.getElementById('contrato-parceiro-nome').value; const cpf = document.getElementById('contrato-parceiro-cpf').value; const endereco = document.getElementById('contrato-parceiro-endereco').value; const equip = document.getElementById('contrato-parceiro-equipamentos').value; const acordo = document.getElementById('contrato-parceiro-acordo').value; const inicio = document.getElementById('contrato-parceiro-inicio').value; const duracao = document.getElementById('contrato-parceiro-duracao').value;
+            if(!nome || !cpf || !inicio) return alert('Preencha os dados do parceiro!');
+            const contratadaStr = getContratadaString();
+            const texto = `<h2 style="text-align:center;">CONTRATO DE PARCERIA DE MÍDIA</h2><p>As partes firmam o presente Contrato de Parceria de Mídia, conforme as seguintes cláusulas:</p><p><strong>CLÁUSULA 1ª - OBJETO</strong><br>${contratadaStr} instalará ${equip} no ESTABELECIMENTO (${nome}), localizado na ${endereco}, para exibição de conteúdo publicitário.</p><p><strong>CLÁUSULA 2ª - INSTALAÇÃO</strong><br>A TV será instalada pela FORUS MÍDIA em local de visibilidade estratégica.</p><p><strong>CLÁUSULA 3ª - OBRIGAÇÕES DO ESTABELECIMENTO</strong><br>I - Manter a TV em local seguro;<br>II - Permitir acesso da FORUS MÍDIA;<br>III - Não desligar ou desconectar a TV;<br>IV - Restituir a TV em perfeito estado ao final do contrato.</p><p><strong>CLÁUSULA 4ª - OBRIGAÇÕES DA FORUS MÍDIA</strong><br>I - Realizar a instalação;<br>II - Manter o conteúdo atualizado;<br>III - Realizar manutenção preventiva;<br>IV - Retirar o equipamento ao final do contrato.</p><p><strong>CLÁUSULA 5ª - CONTRAPARTIDA</strong><br>Como contrapartida, o ESTABELECIMENTO receberá: <strong>${acordo}</strong>.</p><p><strong>CLÁUSULA 6ª - PRAZO</strong><br>Prazo de ${duracao} meses, iniciando em ${inicio}, renovando-se automaticamente.</p><p><strong>CLÁUSULA 7ª - RESCISÃO</strong><br>Rescisível mediante aviso prévio de 30 dias.</p><br><p style="text-align:center;">Assinaturas: _______________________</p>`;
+            imprimirContrato(texto, `Contrato Parceiro - ${nome}`);
+        }
+
+        function gerarContratoCliente() {
+            const nome = document.getElementById('contrato-cliente-nome').value; const cpf = document.getElementById('contrato-cliente-cpf').value; const pts = document.getElementById('contrato-cliente-pontos').value; const valor = document.getElementById('contrato-cliente-valor').value; const inicio = document.getElementById('contrato-cliente-inicio').value; const duracao = document.getElementById('contrato-cliente-duracao').value;
+            if(!nome || !cpf || !inicio) return alert('Preencha todos os dados!');
+            const venc = calcVencimento(inicio, duracao);
+            const contratadaStr = getContratadaString();
+            const texto = `<h2 style="text-align:center;">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE MÍDIA</h2><p><strong>CONTRATANTE:</strong> ${nome}, CPF/CNPJ ${cpf}.</p><p><strong>CONTRATADA:</strong> ${contratadaStr}.</p><hr><p><strong>CLÁUSULA 1ª - DO OBJETO</strong><br>Veiular mídias nas telas: <strong>${pts}</strong>.</p><p><strong>CLÁUSULA 2ª - DO PRAZO</strong><br>Vigência de ${duracao} meses, de ${inicio} a ${venc}.</p><p><strong>CLÁUSULA 3ª - DO VALOR</strong><br>Valor mensal de <strong>R$ ${valor}</strong>. Inadimplência > 10 dias autoriza suspensão.</p><p><strong>CLÁUSULA 4ª - DO CONTEÚDO</strong><br>O CONTRATANTE isenta a CONTRATADA de direitos autorais do material.</p><p><strong>CLÁUSULA 5ª - RESCISÃO</strong><br>Aviso prévio de 30 dias.</p><br><p style="text-align:center;">Assinaturas: _______________________</p>`;
+            imprimirContrato(texto, `Contrato Cliente - ${nome}`);
+        }
+
+        function gerarContratoIndependente() {
+            const nome = document.getElementById('contrato-ind-nome').value; const cpf = document.getElementById('contrato-ind-cpf').value; const equip = document.getElementById('contrato-ind-equipamento').value; const valor = document.getElementById('contrato-ind-valor').value; const inicio = document.getElementById('contrato-ind-inicio').value; const duracao = document.getElementById('contrato-ind-duracao').value;
+            if(!nome || !cpf || !inicio) return alert('Preencha todos os dados!');
+            const contratadaStr = getContratadaString();
+            const texto = `<h2 style="text-align:center;">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE MÍDIA</h2><p><strong>CONTRATANTE:</strong> ${nome}, CPF/CNPJ ${cpf}.</p><p><strong>CONTRATADA:</strong> ${contratadaStr}.</p><hr><p><strong>CLÁUSULA 1ª - DO OBJETO</strong><br>Gestão de conteúdo para: <strong>${equip}</strong>.</p><p><strong>CLÁUSULA 2ª - DO PRAZO</strong><br>Vigência de ${duracao} meses, de ${inicio}.</p><p><strong>CLÁUSULA 3ª - DO VALOR</strong><br>Valor mensal de <strong>R$ ${valor}</strong>.</p><p><strong>CLÁUSULA 4ª - DA MANUTENÇÃO</strong><br>Manutenção física por conta do CONTRATANTE. Gestão lógica por conta da CONTRATADA.</p><p><strong>CLÁUSULA 5ª - RESCISÃO</strong><br>Aviso prévio de 30 dias.</p><br><p style="text-align:center;">Assinaturas: _______________________</p>`;
+            imprimirContrato(texto, `Contrato Independente - ${nome}`);
+        }
+
+        function imprimirContrato(conteudo, titulo) { const janela = window.open('', '', 'width=800,height=600'); janela.document.write(`<html><head><title>${titulo}</title></head><body style="font-family:Arial; padding:40px; line-height: 1.6;">${conteudo}</body></html>`); janela.document.close(); janela.print(); }
+
+    </script>
+</body>
+</html>
