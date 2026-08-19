@@ -43,7 +43,7 @@
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #f2f2f2; }
         
-        /* DASHBOARD - NOVO LAYOUT */
+        /* DASHBOARD */
         .dashboard-cards {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -400,6 +400,33 @@
             return diff >= 0 && diff <= 5; // Vence em até 5 dias
         }
 
+        function isInadimplente(cliente) {
+            const valor = parseFloat(cliente.valor) || 0;
+            if(valor <= 0) return false; // Parceiros não são inadimplentes
+            
+            const mesAtual = new Date().getMonth();
+            const anoAtual = new Date().getFullYear();
+            
+            // Verifica se já pagou este mês
+            if(cliente.ultimoPagamento) {
+                const dPag = cliente.ultimoPagamento.toDate();
+                if(dPag.getMonth() === mesAtual && dPag.getFullYear() === anoAtual) {
+                    return false; // Pagou este mês, não é inadimplente
+                }
+            }
+            
+            // Se não pagou este mês, verifica se já passou do vencimento
+            if(cliente.vencimento) {
+                const hoje = new Date();
+                const venc = new Date(cliente.vencimento + "T23:59:59");
+                if(venc < hoje) {
+                    return true; // Já passou do vencimento e não pagou
+                }
+            }
+            
+            return false; // Ainda não venceu
+        }
+
         function getWhatsAppLink(tel, vencimento) {
             if(!tel) return '#';
             let clean = tel.replace(/\D/g, '');
@@ -426,7 +453,6 @@
             
             let pagantes = 0, parceiros = 0, inadimplentes = 0, vencendo = 0;
             let faturamentoTotal = 0;
-            const mesAtual = new Date().getMonth(); const anoAtual = new Date().getFullYear();
 
             // Calcular para clientes
             clientes.forEach(c => {
@@ -440,11 +466,7 @@
                 if(valor > 0) {
                     pagantes++;
                     faturamentoTotal += valor;
-                    // Verificar inadimplência
-                    if(c.ultimoPagamento) {
-                        const dPag = c.ultimoPagamento.toDate();
-                        if(!(dPag.getMonth() === mesAtual && dPag.getFullYear() === anoAtual)) inadimplentes++;
-                    } else if(c.inicio && new Date(c.inicio + "T23:59:59") < new Date()) {
+                    if(isInadimplente(c)) {
                         inadimplentes++;
                     }
                 } else { 
@@ -464,10 +486,7 @@
                 if(valor > 0) {
                     pagantes++;
                     faturamentoTotal += valor;
-                    if(i.ultimoPagamento) {
-                        const dPag = i.ultimoPagamento.toDate();
-                        if(!(dPag.getMonth() === mesAtual && dPag.getFullYear() === anoAtual)) inadimplentes++;
-                    } else if(i.inicio && new Date(i.inicio + "T23:59:59") < new Date()) {
+                    if(isInadimplente(i)) {
                         inadimplentes++;
                     }
                 } else { 
@@ -641,7 +660,7 @@
             
             if(!nome || !cpf || !inicio) return alert('Preencha todos os dados obrigatórios!');
             
-            const diaVenc = inicio.split('-')[2]; // Pega o dia da data de inicio
+            const diaVenc = inicio.split('-')[2];
             const ptsNomes = pontosSelecionados.map(pid => { const p = pontos.find(pt => pt.id === pid); return p ? p.nome : ''; }).join(', ') || 'Não selecionados';
             const venc = calcVencimento(inicio, duracao);
             const contratadaStr = getContratadaString();
@@ -671,7 +690,7 @@
             
             if(!nome || !cpf || !inicio) return alert('Preencha todos os dados!');
             
-            const diaVenc = inicio.split('-')[2]; // Pega o dia da data de inicio
+            const diaVenc = inicio.split('-')[2];
             const contratadaStr = getContratadaString();
             
             const texto = `
