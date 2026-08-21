@@ -380,14 +380,14 @@
             if(id === 'contratos') mudarFormContrato();
         }
 
-        // --- HELPERS ---
+        // --- HELPERS CORRIGIDOS ---
         function getVencimentoClass(dateStr) {
             if(!dateStr) return '';
             const hoje = new Date(); 
             const venc = new Date(dateStr + "T23:59:59");
-            const diff = (venc - hoje) / (1000*60*60*24);
+            const diff = Math.floor((venc - hoje) / (1000*60*60*24)); // ARREDONDA PARA BAIXO
             
-            if(diff < 0) return 'alerta-vermelho';      // Vencido
+            if(diff < 0) return 'alerta-vermelho';      // Já venceu
             if(diff <= 5) return 'alerta-amarelo';       // Vence em até 5 dias
             return '';
         }
@@ -396,7 +396,7 @@
             if(!dateStr) return false;
             const hoje = new Date();
             const venc = new Date(dateStr + "T23:59:59");
-            const diff = (venc - hoje) / (1000*60*60*24);
+            const diff = Math.floor((venc - hoje) / (1000*60*60*24)); // ARREDONDA PARA BAIXO
             return diff >= 0 && diff <= 5; // Vence em até 5 dias
         }
 
@@ -434,9 +434,10 @@
             
             let msg = "Olá, aqui é da Forus Mídia!";
             if(vencimento) {
-                const hoje = new Date(); const venc = new Date(vencimento + "T23:59:59");
-                const diff = (venc - hoje) / (1000*60*60*24);
-                if(diff <= 10) { 
+                const hoje = new Date(); 
+                const venc = new Date(vencimento + "T23:59:59");
+                const diff = Math.floor((venc - hoje) / (1000*60*60*24));
+                if(diff <= 5 && diff >= 0) { 
                     msg = "Olá! A Forus Mídia está enviando esta mensagem automática para informar que seu contrato se encerra em menos de 5 dias. E gostaríamos muito de continuar tendo você como nosso parceiro! 🤝 Me responda aqui e vamos renovar.";
                 }
             }
@@ -444,7 +445,9 @@
         }
         function calcVencimento(inicio, duracao) {
             if(!inicio || !duracao) return '';
-            const d = new Date(inicio + "T12:00:00"); d.setMonth(d.getMonth() + parseInt(duracao)); return d.toISOString().split('T')[0];
+            const d = new Date(inicio + "T12:00:00"); 
+            d.setMonth(d.getMonth() + parseInt(duracao)); 
+            return d.toISOString().split('T')[0];
         }
 
         // --- DASHBOARD ---
